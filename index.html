@@ -1,0 +1,152 @@
+
+/ludo-demo
+│
+├── index.html
+└── style.css   (वैकल्पिक, लेकिन यहाँ हम <style> टैग में रखेंगे)
+---
+
+2. index.html
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <title>Ludo Demo – सरल संस्करण</title>
+    <style>
+        / ----- बोर्ड का आकार ----- /
+        .board {
+            width: 480px;
+            height: 480px;
+            margin: 20px auto;
+            position: relative;
+            background: #f0e68c;
+            border: 4px solid #8b4513;
+            box-sizing: border-box;
+        }
+        / ----- 8x8 ग्रिड ----- /
+        .cell {
+            width: 60px;
+            height: 60px;
+            float: left;
+            box-sizing: border-box;
+            border: 1px solid #8b4513;
+            background: #fff;
+        }
+
+        / ----- खिलाड़ी के टुकड़े ----- /
+        .piece {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            cursor: pointer;
+        }
+        .red { background: #ff4d4d; }
+        .green { background: #4dff4d; }
+        .yellow { background: #ffff4d; }
+        .blue { background: #4d4dff; }
+
+        / ----- डाइस और बटन ----- /
+        #dice { font-size: 48px; margin: 10px; }
+        #rollBtn { padding: 10px 20px; font-size: 18px; }
+        #info { margin-top: 10px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1 style="text-align:center;">Ludo – सरल संस्करण</h1>
+
+    <div class="board" id="board"></div>
+
+    <div style="text-align:center;">
+        <div id="dice">🎲</div>
+        <button id="rollBtn">डाइस रोल करें</button>
+        <div id="info"></div>
+    </div>
+
+    <script>
+        / ---------- 1. बोर्ड बनाना ---------- /
+        const board = document.getElementById('board');
+        const rows = 8, cols = 8;
+        const cells = []; // 2D array of cells
+
+        for (let r = 0; r < rows; r++) {
+            cells[r] = [];
+            for (let c = 0; c < cols; c++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                board.appendChild(cell);
+                cells[r][c] = cell;
+            }
+        }
+
+        / ---------- 2. खिलाड़ी के टुकड़े ---------- /
+        const players = [
+            {color: 'red',   start: {r: 0, c: 0},   pos: {r: 0, c: 0}},
+            {color: 'green', start: {r: 0, c: 7},   pos: {r: 0, c: 7}},
+            {color: 'yellow',start: {r: 7, c: 0},   pos: {r: 7, c: 0}},
+            {color: 'blue',  start: {r: 7, c: 7},   pos: {r: 7, c: 7}}
+        ];
+
+        const pieces = []; // DOM elements
+
+        players.forEach((p, idx) => {
+            const piece = document.createElement('div');
+            piece.className = piece ${p.color};
+            piece.dataset.idx = idx; // to identify which player
+            board.appendChild(piece);
+            pieces.push(piece);
+            updatePiecePosition(idx);
+        });
+
+        / ---------- 3. डाइस रोल ---------- /
+        const diceEl = document.getElementById('dice');
+        const rollBtn = document.getElementById('rollBtn');
+        const infoEl = document.getElementById('info');
+
+        let currentPlayer = 0; // 0 to 3
+
+        rollBtn.addEventListener('click', () => {
+            const roll = Math.floor(Math.random() * 6) + 1;
+            diceEl.textContent = roll;
+            infoEl.textContent = Player ${currentPlayer + 1} (${players[currentPlayer].color}) ने ${roll} रोल किया।;
+
+            // सरल चाल: सिर्फ़ पंक्ति में आगे बढ़ना
+            movePiece(currentPlayer, roll);
+            currentPlayer = (currentPlayer + 1) % 4;
+        });
+
+        / ---------- 4. टुकड़े को स्थानांतरित करना ---------- /
+        function movePiece(idx, steps) {
+            const p = players[idx];
+            // केवल पंक्ति में आगे बढ़ें (उदाहरण)
+            let newR = p.pos.r + steps;
+            if (newR >= rows) newR = rows - 1; // सीमा रोकें
+            p.pos.r = newR;
+            updatePiecePosition(idx);
+        }
+
+        function updatePiecePosition(idx) {
+            const p = players[idx];
+            const piece = pieces[idx];
+            const cell = cells[p.pos.r][p.pos.c];
+            // पंक्ति/कॉलम के आधार पर पोज़िशन
+            const rect = cell.getBoundingClientRect();
+            const boardRect = board.getBoundingClientRect();
+            const offsetX = rect.left - boardRect.left;
+            const offsetY = rect.top - boardRect.top;
+            piece.style.left = offsetX + 'px';
+            piece.style.top = offsetY + 'px';
+        }
+
+        / ---------- 5. टुकड़े पर क्लिक करके मैन्युअल मूव (वैकल्पिक) ---------- /
+        pieces.forEach((piece, idx) => {
+            piece.addEventListener('click', () => {
+                const steps = Math.floor(Math.random() * 6) + 1;
+                movePiece(idx, steps);
+                infoEl.textContent = Player ${idx + 1} ने ${steps} कदम आगे बढ़ाया।;
+            });
+        });
+    </script>
+</body>
+</html>
