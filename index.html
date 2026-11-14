@@ -1,152 +1,388 @@
 
-/ludo-demo
-│
-├── index.html
-└── style.css   (वैकल्पिक, लेकिन यहाँ हम <style> टैग में रखेंगे)
----
-
-2. index.html
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Ludo Demo – सरल संस्करण</title>
-    <style>
-        / ----- बोर्ड का आकार ----- /
-        .board {
-            width: 480px;
-            height: 480px;
-            margin: 20px auto;
-            position: relative;
-            background: #f0e68c;
-            border: 4px solid #8b4513;
-            box-sizing: border-box;
-        }
-        / ----- 8x8 ग्रिड ----- /
-        .cell {
-            width: 60px;
-            height: 60px;
-            float: left;
-            box-sizing: border-box;
-            border: 1px solid #8b4513;
-            background: #fff;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Space Shooter Game</title>
 
-        / ----- खिलाड़ी के टुकड़े ----- /
-        .piece {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            position: absolute;
-            top: 6px;
-            left: 6px;
-            cursor: pointer;
-        }
-        .red { background: #ff4d4d; }
-        .green { background: #4dff4d; }
-        .yellow { background: #ffff4d; }
-        .blue { background: #4d4dff; }
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
-        / ----- डाइस और बटन ----- /
-        #dice { font-size: 48px; margin: 10px; }
-        #rollBtn { padding: 10px 20px; font-size: 18px; }
-        #info { margin-top: 10px; font-weight: bold; }
-    </style>
+body {
+  background: #070b1b;
+  color: white;
+  font-family: Arial, sans-serif;
+  text-align: center;
+  overflow: hidden;
+}
+
+h1 {
+  padding: 15px;
+  color: #00eaff;
+  text-shadow: 0 0 15px #00eaff;
+}
+
+.game-info {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  padding: 10px;
+  font-size: 18px;
+}
+
+canvas {
+  background: linear-gradient(#101b3c, #050817);
+  border: 2px solid #00eaff;
+  border-radius: 12px;
+  width: min(95vw, 500px);
+  height: auto;
+  max-height: 70vh;
+  touch-action: none;
+}
+
+button {
+  padding: 12px 22px;
+  margin: 8px;
+  border: none;
+  border-radius: 10px;
+  background: #00d9ff;
+  color: #001020;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+}
+
+button:active {
+  transform: scale(.94);
+}
+</style>
 </head>
+
 <body>
-    <h1 style="text-align:center;">Ludo – सरल संस्करण</h1>
 
-    <div class="board" id="board"></div>
+<h1>🚀 SPACE SHOOTER</h1>
 
-    <div style="text-align:center;">
-        <div id="dice">🎲</div>
-        <button id="rollBtn">डाइस रोल करें</button>
-        <div id="info"></div>
-    </div>
+<div class="game-info">
+  <div>Score: <span id="score">0</span></div>
+  <div>Lives: <span id="lives">3</span></div>
+  <div>Level: <span id="level">1</span></div>
+</div>
 
-    <script>
-        / ---------- 1. बोर्ड बनाना ---------- /
-        const board = document.getElementById('board');
-        const rows = 8, cols = 8;
-        const cells = []; // 2D array of cells
+<canvas id="game" width="500" height="600"></canvas>
 
-        for (let r = 0; r < rows; r++) {
-            cells[r] = [];
-            for (let c = 0; c < cols; c++) {
-                const cell = document.createElement('div');
-                cell.className = 'cell';
-                board.appendChild(cell);
-                cells[r][c] = cell;
-            }
-        }
+<div>
+  <button onclick="startGame()">START GAME</button>
+  <button onclick="restartGame()">RESTART</button>
+</div>
 
-        / ---------- 2. खिलाड़ी के टुकड़े ---------- /
-        const players = [
-            {color: 'red',   start: {r: 0, c: 0},   pos: {r: 0, c: 0}},
-            {color: 'green', start: {r: 0, c: 7},   pos: {r: 0, c: 7}},
-            {color: 'yellow',start: {r: 7, c: 0},   pos: {r: 7, c: 0}},
-            {color: 'blue',  start: {r: 7, c: 7},   pos: {r: 7, c: 7}}
-        ];
+<div class="controls">
+  <button id="left">⬅ LEFT</button>
+  <button id="shoot">🔥 FIRE</button>
+  <button id="right">RIGHT ➡</button>
+</div>
 
-        const pieces = []; // DOM elements
+<p style="padding:10px;color:#aaa">
+  Keyboard: ← → Move | SPACE Shoot
+</p>
 
-        players.forEach((p, idx) => {
-            const piece = document.createElement('div');
-            piece.className = piece ${p.color};
-            piece.dataset.idx = idx; // to identify which player
-            board.appendChild(piece);
-            pieces.push(piece);
-            updatePiecePosition(idx);
-        });
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-        / ---------- 3. डाइस रोल ---------- /
-        const diceEl = document.getElementById('dice');
-        const rollBtn = document.getElementById('rollBtn');
-        const infoEl = document.getElementById('info');
+let player, bullets, enemies, stars;
+let score = 0;
+let lives = 3;
+let level = 1;
+let running = false;
+let gameOver = false;
+let keys = {};
+let lastShot = 0;
+let animationId;
 
-        let currentPlayer = 0; // 0 to 3
+function setup() {
+  player = { x: 230, y: 535, w: 40, h: 35, speed: 5 };
+  bullets = [];
+  enemies = [];
+  stars = Array.from({length: 70}, () => ({
+    x: Math.random() * 500,
+    y: Math.random() * 600,
+    speed: Math.random() * 2 + 0.5
+  }));
+}
 
-        rollBtn.addEventListener('click', () => {
-            const roll = Math.floor(Math.random() * 6) + 1;
-            diceEl.textContent = roll;
-            infoEl.textContent = Player ${currentPlayer + 1} (${players[currentPlayer].color}) ने ${roll} रोल किया।;
+setup();
 
-            // सरल चाल: सिर्फ़ पंक्ति में आगे बढ़ना
-            movePiece(currentPlayer, roll);
-            currentPlayer = (currentPlayer + 1) % 4;
-        });
+function drawPlayer() {
+  ctx.fillStyle = "#00eaff";
+  ctx.shadowBlur = 15;
+  ctx.shadowColor = "#00eaff";
 
-        / ---------- 4. टुकड़े को स्थानांतरित करना ---------- /
-        function movePiece(idx, steps) {
-            const p = players[idx];
-            // केवल पंक्ति में आगे बढ़ें (उदाहरण)
-            let newR = p.pos.r + steps;
-            if (newR >= rows) newR = rows - 1; // सीमा रोकें
-            p.pos.r = newR;
-            updatePiecePosition(idx);
-        }
+  ctx.beginPath();
+  ctx.moveTo(player.x + 20, player.y);
+  ctx.lineTo(player.x, player.y + 35);
+  ctx.lineTo(player.x + 40, player.y + 35);
+  ctx.closePath();
+  ctx.fill();
 
-        function updatePiecePosition(idx) {
-            const p = players[idx];
-            const piece = pieces[idx];
-            const cell = cells[p.pos.r][p.pos.c];
-            // पंक्ति/कॉलम के आधार पर पोज़िशन
-            const rect = cell.getBoundingClientRect();
-            const boardRect = board.getBoundingClientRect();
-            const offsetX = rect.left - boardRect.left;
-            const offsetY = rect.top - boardRect.top;
-            piece.style.left = offsetX + 'px';
-            piece.style.top = offsetY + 'px';
-        }
+  ctx.fillStyle = "white";
+  ctx.fillRect(player.x + 16, player.y + 20, 8, 10);
 
-        / ---------- 5. टुकड़े पर क्लिक करके मैन्युअल मूव (वैकल्पिक) ---------- /
-        pieces.forEach((piece, idx) => {
-            piece.addEventListener('click', () => {
-                const steps = Math.floor(Math.random() * 6) + 1;
-                movePiece(idx, steps);
-                infoEl.textContent = Player ${idx + 1} ने ${steps} कदम आगे बढ़ाया।;
-            });
-        });
-    </script>
+  ctx.shadowBlur = 0;
+}
+
+function drawStars() {
+  ctx.fillStyle = "white";
+  stars.forEach(s => {
+    ctx.fillRect(s.x, s.y, 2, 2);
+    s.y += s.speed;
+    if (s.y > 600) {
+      s.y = 0;
+      s.x = Math.random() * 500;
+    }
+  });
+}
+
+function shoot() {
+  const now = Date.now();
+  if (now - lastShot < 220) return;
+  lastShot = now;
+
+  bullets.push({
+    x: player.x + 17,
+    y: player.y,
+    speed: 8
+  });
+}
+
+function createEnemy() {
+  enemies.push({
+    x: Math.random() * 450,
+    y: -40,
+    w: 35,
+    h: 35,
+    speed: 1.5 + level * 0.4
+  });
+}
+
+function collision(a, b) {
+  return a.x < b.x + b.w &&
+         a.x + a.w > b.x &&
+         a.y < b.y + b.h &&
+         a.y + a.h > b.y;
+}
+
+function update() {
+  if (!running) return;
+
+  if (keys.ArrowLeft) player.x -= player.speed;
+  if (keys.ArrowRight) player.x += player.speed;
+  if (keys.Space) shoot();
+
+  player.x = Math.max(0, Math.min(460, player.x));
+
+  bullets.forEach(b => b.y -= b.speed);
+  bullets = bullets.filter(b => b.y > -10);
+
+  enemies.forEach(e => {
+    e.y += e.speed;
+  });
+
+  // Bullet and enemy collision
+  bullets.forEach((b, bi) => {
+    enemies.forEach((e, ei) => {
+      if (
+        b.x < e.x + e.w &&
+        b.x + 6 > e.x &&
+        b.y < e.y + e.h &&
+        b.y + 12 > e.y
+      ) {
+        bullets.splice(bi, 1);
+        enemies.splice(ei, 1);
+        score += 10;
+      }
+    });
+  });
+
+  // Enemy reaches player
+  enemies.forEach((e, i) => {
+    if (collision(
+      {x: player.x, y: player.y, w: 40, h: 35},
+      e
+    )) {
+      enemies.splice(i, 1);
+      loseLife();
+    } else if (e.y > 600) {
+      enemies.splice(i, 1);
+      loseLife();
+    }
+  });
+
+  level = Math.floor(score / 100) + 1;
+
+  document.getElementById("score").textContent = score;
+  document.getElementById("lives").textContent = lives;
+  document.getElementById("level").textContent = level;
+
+  if (Math.random() < 0.025 + level * 0.002) {
+    createEnemy();
+  }
+
+  if (lives <= 0) endGame();
+}
+
+function loseLife() {
+  lives--;
+}
+
+function drawBullets() {
+  ctx.fillStyle = "#ffe600";
+  ctx.shadowBlur = 10;
+  ctx.shadowColor = "#ffe600";
+
+  bullets.forEach(b => {
+    ctx.fillRect(b.x, b.y, 6, 14);
+  });
+
+  ctx.shadowBlur = 0;
+}
+
+function drawEnemies() {
+  enemies.forEach(e => {
+    ctx.fillStyle = "#ff365e";
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = "#ff365e";
+
+    ctx.beginPath();
+    ctx.arc(e.x + 17, e.y + 17, 17, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "white";
+    ctx.fillRect(e.x + 9, e.y + 12, 5, 5);
+    ctx.fillRect(e.x + 22, e.y + 12, 5, 5);
+  });
+
+  ctx.shadowBlur = 0;
+}
+
+function draw() {
+  ctx.clearRect(0, 0, 500, 600);
+
+  drawStars();
+  drawPlayer();
+  drawBullets();
+  drawEnemies();
+}
+
+function loop() {
+  if (!running) return;
+
+  update();
+  draw();
+
+  if (running) {
+    animationId = requestAnimationFrame(loop);
+  }
+}
+
+function startGame() {
+  if (running) return;
+
+  if (gameOver) {
+    restartGame();
+    return;
+  }
+
+  running = true;
+  loop();
+}
+
+function endGame() {
+  running = false;
+  gameOver = true;
+
+  const high = Number(localStorage.getItem("shooterHigh") || 0);
+  if (score > high) {
+    localStorage.setItem("shooterHigh", score);
+  }
+
+  draw();
+
+  ctx.fillStyle = "rgba(0,0,0,.8)";
+  ctx.fillRect(0, 0, 500, 600);
+
+  ctx.fillStyle = "#ff365e";
+  ctx.font = "bold 42px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText("GAME OVER", 250, 270);
+
+  ctx.fillStyle = "white";
+  ctx.font = "22px Arial";
+  ctx.fillText("Your Score: " + score, 250, 320);
+  ctx.fillText("High Score: " +
+    localStorage.getItem("shooterHigh"), 250, 360);
+}
+
+function restartGame() {
+  cancelAnimationFrame(animationId);
+
+  score = 0;
+  lives = 3;
+  level = 1;
+  gameOver = false;
+  running = false;
+  keys = {};
+
+  setup();
+
+  document.getElementById("score").textContent = 0;
+  document.getElementById("lives").textContent = 3;
+  document.getElementById("level").textContent = 1;
+
+  draw();
+  startGame();
+}
+
+document.addEventListener("keydown", e => {
+  if (["ArrowLeft", "ArrowRight", "Space"].includes(e.code)) {
+    e.preventDefault();
+    keys[e.code] = true;
+  }
+});
+
+document.addEventListener("keyup", e => {
+  keys[e.code] = false;
+});
+
+function holdButton(id, key) {
+  const btn = document.getElementById(id);
+
+  btn.addEventListener("pointerdown", e => {
+    e.preventDefault();
+    keys[key] = true;
+  });
+
+  ["pointerup", "pointerleave", "pointercancel"].forEach(event => {
+    btn.addEventListener(event, () => keys[key] = false);
+  });
+}
+
+holdButton("left", "ArrowLeft");
+holdButton("right", "ArrowRight");
+holdButton("shoot", "Space");
+
+draw();
+</script>
+
 </body>
 </html>
